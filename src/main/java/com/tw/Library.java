@@ -25,7 +25,7 @@ public class Library {
     public void master(){
         int chooseId = 3;
         do {
-            System.out.println(Constants.MAIN_MENU_MSG);
+            System.out.print(Constants.MAIN_MENU_MSG);
             chooseId = Integer.parseInt(sc.nextLine());
             process(chooseId);
         }while(chooseId != 3);
@@ -38,12 +38,12 @@ public class Library {
     public void process(int chooseId){
         switch (chooseId){
             case 1:
-                System.out.println(Constants.ADD_STUDENT_INFO_MSG);
-                addStudent();
+                System.out.print(Constants.ADD_STUDENT_INFO_MSG);
+                processCmd(1);
                 break;
             case 2:
-                System.out.println(Constants.PRINT_REPORT_MSG);
-                printScores();
+                System.out.print(Constants.PRINT_REPORT_MSG);
+                processCmd(2);
                 break;
             case 3:
                 return ;
@@ -51,27 +51,30 @@ public class Library {
         }
         return ;
     }
+    public void processCmd(int status){
+        String input = sc.nextLine();
+        boolean flag;
+        if(status ==1){
+            flag = addStudent(input);
+            while(!flag){
+                input = sc.nextLine();
+                flag = addStudent(input);
+            }
+        }
+        if(status == 2){
+            flag = printScores(input);
+            while(!flag){
+                input = sc.nextLine();
+                flag = printScores(input);
+            }
+        }
+
+    }
 
     /**
      * 添加学生
      */
-    public void addStudent(){
-        String input = sc.nextLine();
-        StudentInfo stu = formatStudentInfo(input);
-        while(stu==null){
-            System.out.println(Constants.ADD_STUDENT_ERROR_MSG);
-            input = sc.nextLine();
-            stu = formatStudentInfo(input);
-        }
-        student_list.add(stu);
-        System.out.println("```\n" +
-                    "学生"+stu.getName()+"的成绩被添加\n" +
-                    "```");
-
-        return ;
-    }
-
-    public StudentInfo formatStudentInfo(String input) {
+    public boolean addStudent(String input) {
         StudentInfo stu = null;
         Matcher matcher = Pattern.compile(STU_REGREX).matcher(input);
         if (matcher.matches()) {
@@ -82,42 +85,70 @@ public class Library {
                     Integer.parseInt(matcher.group(5)),
                     Integer.parseInt(matcher.group(6)));
         }
-        return stu;
+        if(stu==null){
+            System.out.print(Constants.ADD_STUDENT_ERROR_MSG);
+            return false;
+        }else {
+            student_list.add(stu);
+            System.out.print("```\n" +
+                    "学生" + stu.getName() + "的成绩被添加\n" +
+                    "```\n");
+            return true;
+        }
     }
 
     /**
      * 生成成绩单
      */
-    public void printScores(){
-
-        String input = sc.nextLine();
-        List<StudentInfo> studentInfos = formatStudentNos(input);
-        while(studentInfos.isEmpty()){
-            System.out.println(Constants.PRINT_REPORT_ERROR_MSG);
-            input = sc.nextLine();
-            studentInfos = formatStudentNos(input);
+    public boolean printScores(String input){
+        List<StudentInfo> stus = new ArrayList<>();
+        Matcher matcher = Pattern.compile(STU_NUM_REGREX).matcher(input);
+        boolean isMatche = matcher.matches();
+        if (!isMatche) {
+            System.out.print(Constants.PRINT_REPORT_ERROR_MSG);
+            return false;
+        }
+        List<String> list = Arrays.asList(input.trim().split(",")).stream()
+                .map(num -> num.trim())
+                .distinct().collect(Collectors.toList());
+        for (String num: list) {
+            if(getStudentByNum(num)!=null){
+                stus.add(getStudentByNum(num));
+            }
         }
 
-        System.out.println("```\n" +
-                "成绩单\n" +
-                "姓名|数学|语文|英语|编程|平均分|总分\n" +
-                "========================");
+        if(stus.isEmpty()){
+            System.out.print(Constants.PRINT_REPORT_ERROR_MSG);
+            return false;
+        }else{
 
-        for (StudentInfo stu : studentInfos) {
-            System.out.println(stu.getName() + "|"
-                    + stu.getMathsScore() + "|"
-                    + stu.getChineseScore() + "|"
-                    + stu.getEnglishScore() + "|"
-                    + stu.getProgramScore() + "|"
-                    + stu.getAverage() + "|"
-                    + stu.getTotal() );
+            System.out.print("```\n" +
+                    "成绩单\n" +
+                    "姓名|数学|语文|英语|编程|平均分|总分\n" +
+                    "========================\n");
+
+            for (StudentInfo stu : stus) {
+                System.out.print(stu.getName() + "|"
+                        + stu.getMathsScore() + "|"
+                        + stu.getChineseScore() + "|"
+                        + stu.getEnglishScore() + "|"
+                        + stu.getProgramScore() + "|"
+                        + stu.getAverage() + "|"
+                        + stu.getTotal()+"\n");
+            }
+
+            System.out.print("========================\n" +
+                    "全班总分平均数："+getClassAvg()+"\n" +
+                    "全班总分中位数："+getClassMid()+"\n" +
+                    "```\n");
+            return true;
         }
-
-        System.out.println("========================\n" +
-                "全班总分平均数："+getClassAvg()+"\n" +
-                "全班总分中位数："+getClassMid()+"\n" +
-                "```");
-
+    }
+    public StudentInfo getStudentByNum(String num){
+        for (StudentInfo stu:student_list) {
+            if(stu.getNumber().equals(num)) return stu;
+        }
+        return null;
     }
     public double getClassAvg(){
         return student_list.stream().mapToInt(StudentInfo::getTotal).average().orElse(0);
@@ -133,29 +164,5 @@ public class Library {
             }
         }
         return classMid;
-    }
-    public List<StudentInfo> formatStudentNos(String input){
-        List<StudentInfo> stus = new ArrayList<>();
-        Matcher matcher = Pattern.compile(STU_NUM_REGREX).matcher(input);
-        boolean isMatche = matcher.matches();
-
-        if (!isMatche) {
-            return stus;
-        }
-        List<String> list = Arrays.asList(input.trim().split(",")).stream()
-                .map(num -> num.trim())
-                .distinct().collect(Collectors.toList());
-        for (String num: list) {
-            if(getStudentByNum(num)!=null){
-                stus.add(getStudentByNum(num));
-            }
-        }
-        return stus;
-    }
-    public StudentInfo getStudentByNum(String num){
-        for (StudentInfo stu:student_list) {
-            if(stu.getNumber().equals(num)) return stu;
-        }
-        return null;
     }
 }
